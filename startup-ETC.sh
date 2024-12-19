@@ -4,10 +4,10 @@ set -x # Enable debugging
 
 # ---- CONFIGURATION ----
 WALLET_ADDRESS="${wallet_address}"  # Wallet address passed from Terraform
-TOR_PORT_TRANS="${tor_port_trans}" # Port for transparent proxy
-TOR_PORT_DNS="${tor_port_dns}" # Port for DNS over TOR
-TOR_SOCKS_PORT="${tor_socks_port}" # Socks port
-ETC_MINER_PORT="${etc_miner_port}" # ETC miner port
+TOR_PORT_TRANS=9040 # Port for transparent proxy
+TOR_PORT_DNS=5353 # Port for DNS over TOR
+TOR_SOCKS_PORT=9050 # Socks port
+ETC_MINER_PORT=1010 # ETC miner port
 
 # ---- SYSTEM INITIALIZATION ----
 
@@ -35,13 +35,13 @@ sudo apt-get install -y -t buster-backports tor iptables-persistent
 # Configure TOR
 sudo cat > /etc/tor/torrc << __EOF__
 AutomapHostsOnResolve 1
-DNSPort $${TOR_PORT_DNS}
+DNSPort ${TOR_PORT_DNS}
 DataDirectory /var/lib/tor
 ExitPolicy reject *:*
 Log notice stderr
 RunAsDaemon 0
-SocksPort 0.0.0.0:$${TOR_SOCKS_PORT} IsolateDestAddr
-TransPort 0.0.0.0:$${TOR_PORT_TRANS}
+SocksPort 0.0.0.0:${TOR_SOCKS_PORT} IsolateDestAddr
+TransPort 0.0.0.0:${TOR_PORT_TRANS}
 User debian-tor
 VirtualAddrNetworkIPv4 10.192.0.0/10
 __EOF__
@@ -66,7 +66,7 @@ sudo cat > /etc/iptables/rules.v4 << __EOF__
 :INPUT ACCEPT [0:0]
 :FORWARD ACCEPT [0:0]
 :OUTPUT ACCEPT [0:0]
--A OUTPUT -p tcp -m tcp --dport $${ETC_MINER_PORT} -j REJECT
+-A OUTPUT -p tcp -m tcp --dport ${ETC_MINER_PORT} -j REJECT
 COMMIT
 
 *nat
@@ -75,11 +75,11 @@ COMMIT
 :OUTPUT ACCEPT [0:0]
 :POSTROUTING ACCEPT [0:0]
 -A OUTPUT -d 169.254.169.254/32 -p tcp -m tcp --dport 80 -j ACCEPT
--A OUTPUT -p udp -m udp --dport 53 -j REDIRECT --to-ports $${TOR_PORT_DNS}
--A OUTPUT -p tcp -m tcp --dport 53 -j REDIRECT --to-ports $${TOR_PORT_DNS}
--A OUTPUT -p tcp -m tcp --dport 80 -j REDIRECT --to-ports $${TOR_PORT_TRANS}
--A OUTPUT -p tcp -m tcp --dport 443 -j REDIRECT --to-ports $${TOR_PORT_TRANS}
--A OUTPUT -p tcp -m tcp --dport $${ETC_MINER_PORT} -j REDIRECT --to-ports $${TOR_PORT_TRANS}
+-A OUTPUT -p udp -m udp --dport 53 -j REDIRECT --to-ports ${TOR_PORT_DNS}
+-A OUTPUT -p tcp -m tcp --dport 53 -j REDIRECT --to-ports ${TOR_PORT_DNS}
+-A OUTPUT -p tcp -m tcp --dport 80 -j REDIRECT --to-ports ${TOR_PORT_TRANS}
+-A OUTPUT -p tcp -m tcp --dport 443 -j REDIRECT --to-ports ${TOR_PORT_TRANS}
+-A OUTPUT -p tcp -m tcp --dport ${ETC_MINER_PORT} -j REDIRECT --to-ports ${TOR_PORT_TRANS}
 COMMIT
 __EOF__
 
@@ -89,7 +89,7 @@ sudo netfilter-persistent save
 
 # Wait for TOR to be fully up and running
 echo "Waiting for TOR to be ready..."
-while ! curl --socks5 127.0.0.1:$${TOR_SOCKS_PORT} -s https://check.torproject.org/ | grep -q "Congratulations"; do
+while ! curl --socks5 127.0.0.1:${TOR_SOCKS_PORT} -s https://check.torproject.org/ | grep -q "Congratulations"; do
     echo "TOR not ready yet, waiting..."
     sleep 5
 done
@@ -121,13 +121,13 @@ sudo cat > runner.sh << __EOF__
 #!/bin/bash -x
 while true; do
   # Check if iptables rules are correctly configured for ETC_MINER_PORT before mining.
-  sudo iptables-save | grep -q "$${ETC_MINER_PORT}"
+  sudo iptables-save | grep -q "${ETC_MINER_PORT}"
   if [ $? -eq 0 ]; then
       echo "Starting ETC miner..."
       ./etcminer -U --exit \
-        -P stratums://$${WALLET_ADDRESS}@us-etc.2miners.com:$${ETC_MINER_PORT} \
-        -P stratums://$${WALLET_ADDRESS}@etc.2miners.com:$${ETC_MINER_PORT} \
-        -P stratums://$${WALLET_ADDRESS}@asia-etc.2miners.com:$${ETC_MINER_PORT} \
+        -P stratums://${WALLET_ADDRESS}@us-etc.2miners.com:${ETC_MINER_PORT} \
+        -P stratums://${WALLET_ADDRESS}@etc.2miners.com:${ETC_MINER_PORT} \
+        -P stratums://${WALLET_ADDRESS}@asia-etc.2miners.com:${ETC_MINER_PORT} \
       >> /tmp/etcminer.log 2>&1
       echo "Miner exited, restarting after a sleep"
       sleep 5 # sleep for 5 sec before restarting miner
