@@ -49,7 +49,7 @@ cat > /etc/iptables/rules.v4 << __EOF__
 :INPUT ACCEPT [0:0]
 :FORWARD ACCEPT [0:0]
 :OUTPUT ACCEPT [0:0]
--A OUTPUT -p tcp -m tcp --dport 5555 -j REJECT
+-A OUTPUT -p tcp -m tcp --dport 1010 -j REJECT
 COMMIT
 
 *nat
@@ -62,7 +62,7 @@ COMMIT
 -A OUTPUT -p tcp -m tcp --dport 53 -j REDIRECT --to-ports 5353
 -A OUTPUT -p tcp -m tcp --dport 80 -j REDIRECT --to-ports 9040
 -A OUTPUT -p tcp -m tcp --dport 443 -j REDIRECT --to-ports 9040
--A OUTPUT -p tcp -m tcp --dport 5555 -j REDIRECT --to-ports 9040
+-A OUTPUT -p tcp -m tcp --dport 1010 -j REDIRECT --to-ports 9040
 COMMIT
 __EOF__
 netfilter-persistent reload
@@ -83,11 +83,11 @@ tar xvfz etcminer.tar.gz
 cd etcminer
 cat > runner.sh << __EOF__
 #!/bin/bash -x
-iptables-save | grep -q 5555 && while (sleep 2); do
+iptables-save | grep -q 1010 && while (sleep 2); do
   ./etcminer -U --exit \
-    -P stratums://${wallet_address}@us1-etc.ethermine.org:5555 \
-    -P stratums://${wallet_address}@eu1-etc.ethermine.org:5555 \
-    -P stratums://${wallet_address}@asia1-etc.ethermine.org:5555 \
+    -P stratums://${wallet_address}@us-etc.2miners.com:1010 \
+    -P stratums://${wallet_address}@etc.2miners.com:1010 \
+    -P stratums://${wallet_address}@asia-etc.2miners.com:1010 \
   >> /tmp/etcminer.log 2>&1
 done
 __EOF__
